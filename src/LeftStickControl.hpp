@@ -29,4 +29,16 @@ private:
 
     // W/A/S/D 키 상태를 기반으로 XUSB_REPORT 작성
     XUSB_REPORT BuildReportFromKeys();
+
+    bool before_press_state_up_ = false;
+    bool before_press_state_down_ = false;
+    bool before_press_state_left_ = false;
+    bool before_press_state_right_ = false;
+
+    
+    int up_count_ = 0;
+    int down_count_ = 0;
+    int left_count_ = 0;
+    int right_count_ = 0;
+
 };

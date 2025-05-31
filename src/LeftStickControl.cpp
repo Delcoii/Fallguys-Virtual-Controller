@@ -63,41 +63,68 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys()
     constexpr SHORT FULL     = 32767;
     constexpr SHORT NEG_FULL = -32768;
 
-    // bool t = (GetAsyncKeyState('T') & 0x8000) != 0;
-    // bool f = (GetAsyncKeyState('F') & 0x8000) != 0;
-    // bool g = (GetAsyncKeyState('G') & 0x8000) != 0;
-    // bool h = (GetAsyncKeyState('H') & 0x8000) != 0;
+    SHORT x = 0;
+    SHORT y = 0;
+
     bool press_up = (GetAsyncKeyState('T') & 0x8000) != 0;
     bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
     bool press_down = (GetAsyncKeyState('G') & 0x8000) != 0;
     bool press_right = (GetAsyncKeyState('H') & 0x8000) != 0;
 
-    SHORT x = 0;
-    SHORT y = 0;
+    static int report_count = 0;
 
-    // Vertical axis (Y)
-    if (press_up && !press_down) {
-        y = FULL;      // Up
+    // check initial press time
+    if (press_up == true && before_press_state_up_ == false)  up_count_ = report_count;
+    if (press_down == true && before_press_state_down_ == false)  down_count_ = report_count;
+    if (press_left == true && before_press_state_left_ == false)  left_count_ = report_count;
+    if (press_right == true && before_press_state_right_ == false)  right_count_ = report_count;
+
+    // joystick X axis
+    if (press_left == true && press_right == true) {        // pressed both left & right
+        x = (left_count_ < right_count_) ? FULL : NEG_FULL; // input is last pressed key
     }
-    else if (press_down && !press_up) {
-        y = NEG_FULL;  // Down
+    else if (press_left == true && press_right == false) { // pressed left only
+        x = NEG_FULL; // Left
+    }
+    else if (press_left == false && press_right == true) { // pressed right only
+        x = FULL; // Right
     }
 
-    // Horizontal axis (X)
-    if (press_right && !press_left) {
-        x = FULL;      // Right
+    // joystick Y axis
+    if (press_up == true && press_down == true) {          // pressed both up & down
+        y = (up_count_ < down_count_) ? NEG_FULL : FULL;     // input is last pressed key
     }
-    else if (press_left && !press_right) {
-        x = NEG_FULL;  // Left
+    else if (press_up == true && press_down == false) {     // pressed up only
+        y = FULL; // Up
     }
+    else if (press_up == false && press_down == true) {     // pressed down only
+        y = NEG_FULL; // Down
+    }
+
+
+    // // Vertical axis (Y)
+    // if (press_up && !press_down) {
+    //     y = FULL;      // Up
+    // }
+    // else if (press_down && !press_up) {
+    //     y = NEG_FULL;  // Down
+    // }
+
+    // // Horizontal axis (X)
+    // if (press_right && !press_left) {
+    //     x = FULL;      // Right
+    // }
+    // else if (press_left && !press_right) {
+    //     x = NEG_FULL;  // Left
+    // }
 
     // Assign the stick values.
     report.sThumbLX = x;
     report.sThumbLY = y;
 
-    static unsigned int report_count = 0;
-    if (report_count++ % 5 == 0) { // Print every 100 reports
-        std::cout << "[Info] Left Stick Report: X=" << x << ", Y=" << y << std::endl;
+    
+    if (report_count % 5 == 0) { // Print every 100 reports
+        std::cout << "[Info] Left Stick X=" << x << ", Y=" << y << std::endl;
     }
     
     // Keep triggers and right stick at zero (unused).
@@ -106,5 +133,11 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys()
     report.sThumbRX      = 0;
     report.sThumbRY      = 0;
 
+
+    before_press_state_down_ = press_down;
+    before_press_state_up_ = press_up;
+    before_press_state_left_ = press_left;
+    before_press_state_right_ = press_right;
+    report_count++;
     return report;
 }
