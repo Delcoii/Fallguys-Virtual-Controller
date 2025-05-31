@@ -1,26 +1,22 @@
 #include "VigemController.hpp"
-#include <thread>
-#include <chrono>
 
-// Constructor: set pointers to nullptr
+// 생성자: member 포인터를 nullptr 로 초기화
 VigemController::VigemController()
     : client_(nullptr), target_(nullptr)
 {
-    // nothing else here
 }
 
-// Destructor: if a controller is still registered or client still connected,
-// make sure to unregister and cleanup.
-VigemController::~VigemController() {
-    // If a controller is registered, remove it
-    if (target_ != nullptr) {
+// 소멸자: 아직 남아 있는 controller나 client를 제거
+VigemController::~VigemController()
+{
+    // 컨트롤러가 남아 있으면 먼저 제거
+    if (target_ != nullptr && client_ != nullptr) {
         vigem_target_remove(client_, target_);
         vigem_target_free(target_);
         target_ = nullptr;
         std::cout << "[Info] Virtual controller removed (from destructor)\n";
     }
-
-    // If the client is still connected, disconnect and free it
+    // client가 남아 있으면 연결 해제
     if (client_ != nullptr) {
         vigem_disconnect(client_);
         vigem_free(client_);
@@ -29,9 +25,9 @@ VigemController::~VigemController() {
     }
 }
 
-// Initialize the ViGEm client.
-// Returns true if successful, false otherwise.
-bool VigemController::Initialize() {
+// ViGEm client 초기화
+bool VigemController::Initialize()
+{
     client_ = vigem_alloc();
     if (client_ == nullptr) {
         std::cerr << "[Error] vigem_alloc() failed\n";
@@ -47,14 +43,13 @@ bool VigemController::Initialize() {
     return true;
 }
 
-// Allocate and register a virtual Xbox 360 controller.
-// Returns true if successful, false otherwise.
-bool VigemController::RegisterX360() {
+// 가상 Xbox 360 컨트롤러 등록
+bool VigemController::RegisterX360()
+{
     if (client_ == nullptr) {
         std::cerr << "[Error] Cannot register controller: client is not initialized\n";
         return false;
     }
-
     target_ = vigem_target_x360_alloc();
     if (target_ == nullptr) {
         std::cerr << "[Error] vigem_target_x360_alloc() failed\n";
@@ -70,9 +65,9 @@ bool VigemController::RegisterX360() {
     return true;
 }
 
-
-// Unregister the virtual controller and free associated resources.
-void VigemController::Unregister() {
+// 가상 컨트롤러 제거
+void VigemController::Unregister()
+{
     if (target_ != nullptr && client_ != nullptr) {
         vigem_target_remove(client_, target_);
         vigem_target_free(target_);
@@ -81,21 +76,36 @@ void VigemController::Unregister() {
     }
 }
 
-
-// Disconnect and free the ViGEm client.
-void VigemController::Cleanup() {
+// client 연결 해제 및 메모리 해제
+void VigemController::Cleanup()
+{
+    // 먼저 남아 있는 컨트롤러 해제
+    if (target_ != nullptr && client_ != nullptr) {
+        vigem_target_remove(client_, target_);
+        vigem_target_free(target_);
+        target_ = nullptr;
+        std::cout << "[Info] Virtual controller removed (from Cleanup)\n";
+    }
+    // client 연결 해제
     if (client_ != nullptr) {
-        // If a controller has not yet been unregistered, free it now
-        if (target_ != nullptr) {
-            vigem_target_remove(client_, target_);
-            vigem_target_free(target_);
-            target_ = nullptr;
-            std::cout << "[Info] Virtual controller removed (from Cleanup)\n";
-        }
-
         vigem_disconnect(client_);
         vigem_free(client_);
         client_ = nullptr;
         std::cout << "[Info] ViGEmClient disconnected and freed (from Cleanup)\n";
     }
+}
+
+// XUSB_REPORT를 가상 컨트롤러에 전송
+bool VigemController::SendX360Report(const XUSB_REPORT& report)
+{
+    if (client_ == nullptr || target_ == nullptr) {
+        std::cerr << "[Error] Cannot send report: client or target is not valid\n";
+        return false;
+    }
+    VIGEM_ERROR status = vigem_target_x360_update(client_, target_, report);
+    if (!VIGEM_SUCCESS(status)) {
+        std::cerr << "[Error] vigem_target_x360_update() failed with code " << status << "\n";
+        return false;
+    }
+    return true;
 }
