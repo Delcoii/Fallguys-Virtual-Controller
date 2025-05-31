@@ -63,27 +63,31 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys()
     constexpr SHORT FULL     = 32767;
     constexpr SHORT NEG_FULL = -32768;
 
-    bool t = (GetAsyncKeyState('T') & 0x8000) != 0;
-    bool f = (GetAsyncKeyState('F') & 0x8000) != 0;
-    bool g = (GetAsyncKeyState('G') & 0x8000) != 0;
-    bool h = (GetAsyncKeyState('H') & 0x8000) != 0;
+    // bool t = (GetAsyncKeyState('T') & 0x8000) != 0;
+    // bool f = (GetAsyncKeyState('F') & 0x8000) != 0;
+    // bool g = (GetAsyncKeyState('G') & 0x8000) != 0;
+    // bool h = (GetAsyncKeyState('H') & 0x8000) != 0;
+    bool press_up = (GetAsyncKeyState('T') & 0x8000) != 0;
+    bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
+    bool press_down = (GetAsyncKeyState('G') & 0x8000) != 0;
+    bool press_right = (GetAsyncKeyState('H') & 0x8000) != 0;
 
     SHORT x = 0;
     SHORT y = 0;
 
     // Vertical axis (Y)
-    if (t && !g) {
+    if (press_up && !press_down) {
         y = FULL;      // Up
     }
-    else if (g && !t) {
+    else if (press_down && !press_up) {
         y = NEG_FULL;  // Down
     }
 
     // Horizontal axis (X)
-    if (h && !f) {
+    if (press_right && !press_left) {
         x = FULL;      // Right
     }
-    else if (f && !h) {
+    else if (press_left && !press_right) {
         x = NEG_FULL;  // Left
     }
 
