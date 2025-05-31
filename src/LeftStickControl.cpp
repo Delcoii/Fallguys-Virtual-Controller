@@ -70,6 +70,7 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys()
     bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
     bool press_down = (GetAsyncKeyState('G') & 0x8000) != 0;
     bool press_right = (GetAsyncKeyState('H') & 0x8000) != 0;
+    bool press_space = (GetAsyncKeyState(VK_SPACE)& 0x8000) != 0;
 
     static int report_count = 0;
 
@@ -102,29 +103,20 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys()
     }
 
 
-    // // Vertical axis (Y)
-    // if (press_up && !press_down) {
-    //     y = FULL;      // Up
-    // }
-    // else if (press_down && !press_up) {
-    //     y = NEG_FULL;  // Down
-    // }
-
-    // // Horizontal axis (X)
-    // if (press_right && !press_left) {
-    //     x = FULL;      // Right
-    // }
-    // else if (press_left && !press_right) {
-    //     x = NEG_FULL;  // Left
-    // }
-
     // Assign the stick values.
     report.sThumbLX = x;
     report.sThumbLY = y;
+    if (press_space) {
+        report.wButtons |= XUSB_GAMEPAD_A; 
+    }
 
-    
+    std::string output_x = (x == NEG_FULL) ? "-" : (x == FULL) ? "+" : "o";
+    std::string output_y = (y == NEG_FULL) ? "-" : (y == FULL) ? "+" : "o";
+    std::string jump_state = (press_space) ? "o" : "x";
     if (report_count % 5 == 0) { // Print every 100 reports
-        std::cout << "[Info] Left Stick X=" << x << ", Y=" << y << std::endl;
+        if (x != 0 || y != 0 || press_space == true) {
+            std::cout << "[Info] Stick : " << output_x << ", " << output_y << ", Jump : " << jump_state << std::endl;
+        }
     }
     
     // Keep triggers and right stick at zero (unused).
