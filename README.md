@@ -34,6 +34,11 @@ cl /EHsc /I "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client
 
 ## .dll, .lib 생성 시 v141? 필요 (visual studio 2017 빌드툴로 sln 실행해야돼서)
 
+## 배포는 앞에 이걸 붙여야한다함
+```bash
+cl /EHsc /MD /O2 ...
+```
+
 
 
 ## .Net sdk (근데 이거 위에꺼 설치할때 해도 될 듯?)
