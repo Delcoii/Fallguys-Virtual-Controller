@@ -20,7 +20,7 @@ void LeftStickControl::Run()
         return;
     }
 
-    std::cout << "[Info] LeftStickControl started (T=Up, G=Down, H=Right, F=Left). Press F12 to exit.\n";
+    std::cout << "[Info] LeftStickControl started. Press F12 to exit.\n";
 
     // Loop until F12 is pressed or should_exit_ is true.
     while (true) {
@@ -70,6 +70,10 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys()
     bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
     bool press_down = (GetAsyncKeyState('G') & 0x8000) != 0;
     bool press_right = (GetAsyncKeyState('H') & 0x8000) != 0;
+    // bool press_up = (GetAsyncKeyState('W') & 0x8000) != 0;
+    // bool press_left = (GetAsyncKeyState('A') & 0x8000) != 0;
+    // bool press_down = (GetAsyncKeyState('S') & 0x8000) != 0;
+    // bool press_right = (GetAsyncKeyState('D') & 0x8000) != 0;
     bool press_space = (GetAsyncKeyState(VK_SPACE)& 0x8000) != 0;
 
     static int report_count = 0;
