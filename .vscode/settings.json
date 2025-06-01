@@ -1,0 +1,16 @@
+{
+    "terminal.integrated.profiles.windows": {
+        "x64 Native Tools Cmd": {
+            "path": "C:\\Windows\\System32\\cmd.exe",
+            "args": [
+                "/k",
+                "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "x64 Native Tools Cmd",
+    "files.associations": {
+        "chrono": "cpp"
+    }
+}
+
