@@ -21,6 +21,11 @@
 cl /MD /O2 /EHsc /I "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client\include" /I "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src" "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\VigemController.cpp" "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\LeftStickControl.cpp" "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\main.cpp" /link /LIBPATH:"C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client\lib\release" /OUT:"build\main.exe" ViGEmClient.lib user32.lib
 ```
 
+### automove (개발중)
+```bash
+cl /MD /O2 /EHsc /I "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client\include" /I "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src" "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\VigemController.cpp" "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\LeftStickControl.cpp" "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\automove.cpp" /link /LIBPATH:"C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client\lib\release" /OUT:"build\automove.exe" ViGEmClient.lib user32.lib
+```
+
 ### connection test script
 ```bash
 cl /EHsc /I "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client\include"  "C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\src\test.cpp" /link /LIBPATH:"C:\Users\sungh\Desktop\git\Fallguys-Virtual-Controller\vigem_client\lib" /OUT:"build\test.exe" ViGEmClient.lib

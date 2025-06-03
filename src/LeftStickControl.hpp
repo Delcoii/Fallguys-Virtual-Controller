@@ -18,8 +18,9 @@ class LeftStickControl {
 public:
  
     explicit LeftStickControl(VigemController& controller);
-
+    
     void Run();
+    void AutoMoveJelly();
 
     void LoopExit() { should_exit_ = true; }
 
@@ -29,6 +30,7 @@ private:
 
     // calculate command report from key states
     XUSB_REPORT BuildReportFromKeys(const int moving_mode);
+    
 
     bool before_press_state_up_ = false;
     bool before_press_state_down_ = false;
@@ -42,4 +44,6 @@ private:
 
     int moving_mode_ = MOVING_TYPE::FAST; // Default mode is FAST
 
+    int before_stick_pos_x_ = 0;
+    int before_stick_pos_y_ = 0;
 };

@@ -76,8 +76,8 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     constexpr SHORT FULL     = 32767;
     constexpr SHORT NEG_FULL = -32768;
 
-    SHORT x = 0;
-    SHORT y = 0;
+    SHORT x = before_stick_pos_x_;    // Left Stick X axis value
+    SHORT y = before_stick_pos_y_;    // Left Stick Y axis value
 
     // bool press_up = (GetAsyncKeyState('T') & 0x8000) != 0;
     // bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
@@ -97,31 +97,63 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     if (press_left == true && before_press_state_left_ == false)  left_count_ = report_count;
     if (press_right == true && before_press_state_right_ == false)  right_count_ = report_count;
 
+    // make setting as same as possible to origin virtual controller settings
     if (moving_mode == MOVING_TYPE::NORMAL) {
         // joystick X axis
-        if (press_left == true && press_right == false) {
-            x = NEG_FULL;
-        }
-        else if (press_left == false && press_right == true) {
-            x = FULL;
-        }
-        else if (press_left == true && press_right == true) { // pressed both left & right
-            x = 0;
+        
+        // left is pressed
+        if (before_press_state_left_ == false && press_left == true) {
+            if (x == FULL)      x -= FULL;      // make it 0
+            else if (x == 0)    x += NEG_FULL;  // make it -32768
         }
 
-        // joystick Y axis
-        if (press_up == true && press_down == false) {
-            y = FULL;
+        // right is pressed
+        if (before_press_state_right_ == false && press_right == true) {
+            if (x == NEG_FULL)  x += FULL+1;    // make it 0
+            else if (x == 0)    x += FULL;      // make it 32767
         }
-        else if (press_up == false && press_down == true) {
-            y = NEG_FULL;
+
+        // down is pressed
+        if (before_press_state_down_ == false && press_down == true) {
+            if (y == FULL)      y -= FULL;      // make it 0
+            else if (y == 0)    y += NEG_FULL;  // make it -32768
         }
-        else if (press_up == true && press_down == true) { // pressed both up & down
-            y = 0;
+
+        // up is pressed
+        if (before_press_state_up_ == false && press_up == true) {
+            if (y == NEG_FULL)  y += FULL+1;    // make it 0
+            else if (y == 0)    y += FULL;      // make it 32767
+        }
+        
+        // left is released
+        if (before_press_state_left_ == true && press_left == false) {
+            if (x == NEG_FULL)  x += FULL+1;    // make it 0
+            else if (x == 0)    x += FULL;      // make it 32767
+        }
+
+        // right is released
+        if (before_press_state_right_ == true && press_right == false) {
+            if (x == FULL)      x -= FULL;      // make it 0
+            else if (x == 0)    x += NEG_FULL;  // make it -32768
+        }
+
+        // down is released
+        if (before_press_state_down_ == true && press_down == false) {
+            if (y == NEG_FULL)  y += FULL+1;    // make it 0
+            else if (y == 0)    y += FULL;      // make it 32767
+        }
+
+        // up is released
+        if (before_press_state_up_ == true && press_up == false) {
+            if (y == FULL)      y -= FULL;      // make it 0
+            else if (y == 0)    y += NEG_FULL;  // make it -32768
         }
     }
 
     else if (moving_mode == MOVING_TYPE::FAST) {
+        x = 0;
+        y = 0;
+        
         // joystick X axis
         if (press_left == true && press_right == true) {        // pressed both left & right
             x = (left_count_ < right_count_) ? FULL : NEG_FULL; // input is last pressed key
@@ -163,7 +195,8 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
             || press_left == true
             || press_right == true
             || press_space == true) {
-            std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\t\tJump : " << jump_state << std::endl;
+            std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\t\tJump : " << jump_state << "\n";
+            // std::cout << "[Info] Stick : " << x << "\t" << y << ",\t\tJump : " << jump_state << std::endl;
         }
     }
     
@@ -178,6 +211,84 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     before_press_state_up_ = press_up;
     before_press_state_left_ = press_left;
     before_press_state_right_ = press_right;
+
+    before_stick_pos_x_ = x;
+    before_stick_pos_y_ = y;
+
     report_count++;
     return report;
+}
+
+// automove the jelly
+// left -> right -> up -> down in every 500 loops
+void LeftStickControl::AutoMoveJelly() {
+    // Verify that the VigemController is initialized and a controller is registered.
+    if (!controller_.IsClientValid() || !controller_.IsControllerValid()) {
+        std::cerr << "[Error] VigemController is not initialized or controller not registered.\n";
+        return;
+    }
+
+    std::cout << "[Info] >> Auto <<  Jelly Control started. Press F12 to exit.\n";
+    
+    int count = 0;
+    // Loop until F12 is pressed or should_exit_ is true.
+    while (true) {
+        // If F12 is pressed, break out.
+        if ((GetAsyncKeyState(VK_F12) & 0x8000) != 0) {
+            std::cout << "[Info] F12 detected. Exiting Program.\n";
+            break;
+        }
+
+        // If an external request to exit was made, break out.
+        if (should_exit_) {
+            std::cout << "[Info] LoopExit() called. Exiting Program.\n";
+            break;
+        }
+
+        // Change mode by get input of pgup or pgdn
+        
+        // Build and send the current Left Stick report based on T/F/H/G.
+        XUSB_REPORT report;
+
+        
+        if (count % 100 == 0) {         // go left
+            report.sThumbLX = -32768; 
+            report.sThumbLY = 0;      
+        }
+        else if (count % 100 == 1) {    // go right
+            report.sThumbLX = 32767; 
+            report.sThumbLY = 0;      
+        }
+        else if (count % 100 == 2) {    // go up
+            report.sThumbLX = 0; 
+            report.sThumbLY = 32767;      
+        }
+        else if (count % 100 == 3) {    // go down
+            report.sThumbLX = 0; 
+            report.sThumbLY = -32768;      
+        }
+
+        report.bLeftTrigger  = 0;
+        report.bRightTrigger = 0;
+        report.sThumbRX      = 0;
+        report.sThumbRY      = 0;
+
+        if (!controller_.SendX360Report(report)) {
+            std::cerr << "[Error] Failed to send X360 report.\n";
+            break;
+        }
+
+        // Wait ~20ms (about 50 updates per second).
+        count++;
+        if (count == 400) {
+            count = 0;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+
+    // On exit, reset Left Stick to (0,0) to center it.
+    XUSB_REPORT neutral = {};
+    controller_.SendX360Report(neutral);
+    std::cout << "[Info] LeftStickControl loop exited.\n";
 }

@@ -12,6 +12,9 @@ int main() {
     std::string mainpage4 = "|  '--'  ||  |____ |  `----.|  `----.|  `--'  | |  | |  | \n";
     std::string mainpage5 = "|_______/ |_______||_______| \\______| \\______/  |__| |__|\n\n\n";
 
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
     // Show the main page
     std::cout << mainpage0 << mainpage1 << mainpage2 << mainpage3 << mainpage4 << mainpage5;
 
