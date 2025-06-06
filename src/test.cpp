@@ -1,15 +1,13 @@
 // src\test.cpp
 
-
-#include <Windows.h>         // 반드시 ViGEm/Client.h 이전에 포함
+#include <Windows.h>         // Must be included before ViGEm/Client.h
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <ViGEm/ViGEmClient.h>    // ViGEmClient 헤더
+#include <ViGEm/ViGEmClient.h>    // ViGEmClient header
 
-int main()
-{
-    // 1) ViGEmClient 할당 및 연결
+int main() {
+    // 1) Allocate and connect ViGEmClient
     PVIGEM_CLIENT client = vigem_alloc();
     if (client == nullptr)
     {
@@ -24,7 +22,7 @@ int main()
     }
     std::cout << "[Info] ViGEmBus connected\n";
 
-    // 2) 가상 Xbox 360 컨트롤러 할당 및 등록
+    // 2) Allocate and register virtual Xbox 360 controller
     PVIGEM_TARGET target = vigem_target_x360_alloc();
     if (target == nullptr)
     {
@@ -43,11 +41,11 @@ int main()
     }
     std::cout << "[Info] Virtual Xbox 360 controller registered\n";
 
-    // 3) 3초간 대기
+    // 3) Wait for 20 seconds
     std::cout << "[Info] Waiting 20 seconds...\n";
     std::this_thread::sleep_for(std::chrono::seconds(20));
 
-    // 4) 컨트롤러 제거 및 정리
+    // 4) Remove controller and clean up
     vigem_target_remove(client, target);
     vigem_target_free(target);
     vigem_disconnect(client);
