@@ -86,6 +86,7 @@ void VigemController::Cleanup()
         target_ = nullptr;
         std::cout << "[Info] Virtual controller removed (from Cleanup)\n";
     }
+    
     // if the client is still connected, disconnect it
     if (client_ != nullptr) {
         vigem_disconnect(client_);
@@ -94,6 +95,7 @@ void VigemController::Cleanup()
         std::cout << "[Info] ViGEmClient disconnected and freed (from Cleanup)\n";
     }
 }
+
 
 // Send an XUSB_REPORT to the virtual controller
 bool VigemController::SendX360Report(const XUSB_REPORT& report)

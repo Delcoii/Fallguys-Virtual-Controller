@@ -69,13 +69,38 @@ void LeftStickControl::Run() {
             toggle_mode_debounce = false;
         }
 
-        // Build and send the current Left Stick report.
-        XUSB_REPORT report = BuildReportFromKeys(moving_mode_);
-        if (!controller_.SendX360Report(report)) {
-            std::cerr << "[Error] Failed to send X360 report.\n";
-            break;
+        // Toggle signal onoff 
+        // Toggle signal onoff with debounce handling.
+        static bool signal_onoff_debounce = false;
+        if ((GetAsyncKeyState(controller_onoff_key_) & 0x8000) != 0) {
+            if (!signal_onoff_debounce) {
+                // Toggle the on/off signal.
+                signal_on_ = !signal_on_;
+                std::cout << "[Info] Signal turned " << (signal_on_ ? "ON" : "OFF") << ".\n";
+                signal_onoff_debounce = true;
+            }
+        } else {
+            signal_onoff_debounce = false;
         }
 
+
+        // Build and send the current Left Stick report.
+        if (signal_on_ == true) {
+            XUSB_REPORT report = BuildReportFromKeys(moving_mode_);
+            if (!controller_.SendX360Report(report)) {
+                std::cerr << "[Error] Failed to send X360 report.\n";
+                break;
+            }    
+        }
+        else if (signal_on_ == false) {
+            // If signal is off, send a neutral report.
+            XUSB_REPORT neutral = {};
+            if (!controller_.SendX360Report(neutral)) {
+                std::cerr << "[Error] Failed to send neutral X360 report.\n";
+                break;
+            }
+        }
+        
         // Sleep until next frame time.
         std::this_thread::sleep_until(next_frame_time);
         last_period_us_ = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -226,7 +251,8 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
 
 
     if (report_count % 15000 == 0) {         
-        if (press_up == true || press_down == true || press_left == true || press_right == true || press_space == true) {
+        if ((press_up == true || press_down == true || press_left == true || press_right == true || press_space == true)
+            && signal_on_ == true) {
             // std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\tJump : " << jump_state << "\t"
             //           << "Duration : " << period.count() << "\tus\n";
             std::cout << "[Info] move   : " << output_x << "\t" << output_y << "\t" << jump_state <<
@@ -319,6 +345,7 @@ void LeftStickControl::ProcessINI() {
     std::string jump_key_string;
     std::string toggle_mode_key_string;
     std::string temp_toggle_mode_key_string;
+    std::string controller_onoff_key_string;
 
     ini_parser_.ParseConfig("Pad to Key", "up", up_key_string);
     ini_parser_.ParseConfig("Pad to Key", "down", down_key_string);
@@ -327,6 +354,8 @@ void LeftStickControl::ProcessINI() {
     ini_parser_.ParseConfig("Pad to Key", "jump", jump_key_string);
 
     ini_parser_.ParseConfig("Mode", "toggle", toggle_mode_key_string);
+
+    ini_parser_.ParseConfig("System", "onoff", controller_onoff_key_string);
 
     
     // convert string input to key map
@@ -337,6 +366,7 @@ void LeftStickControl::ProcessINI() {
         right_key_ = KeyTable::map.at(KeyTable::toUpper(right_key_string));
         jump_key_ = KeyTable::map.at(KeyTable::toUpper(jump_key_string));
         toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(toggle_mode_key_string));
+        controller_onoff_key_ = KeyTable::map.at(KeyTable::toUpper(controller_onoff_key_string));
 
     } catch (const std::out_of_range &e) {
         std::cerr << "!!! Key not found in KeyTable !!! : " << e.what() << std::endl;
@@ -348,6 +378,6 @@ void LeftStickControl::ProcessINI() {
               << "left key    : " << left_key_string << "\n"
               << "down key    : " << down_key_string << "\n"
               << "right key   : " << right_key_string << "\n\n"
-              << "mode toggle : " << toggle_mode_key_string << "\n\n\n\n";
-
+              << "mode toggle : " << toggle_mode_key_string << "\n"
+              << "onoff       : " << controller_onoff_key_string << "\n\n\n\n";
 }
