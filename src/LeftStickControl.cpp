@@ -36,6 +36,8 @@ void LeftStickControl::Run() {
 
     // Loop until F12 is pressed or should_exit_ is true.
     while (true) {
+        loop_start_time_ = std::chrono::high_resolution_clock::now();
+
         // If F12 is pressed, break out.
         if ((GetAsyncKeyState(VK_F12) & 0x8000) != 0) {
             std::cout << "[Info] F12 detected. Exiting Program.\n";
@@ -48,19 +50,21 @@ void LeftStickControl::Run() {
             break;
         }
 
-        // Change mode by get input of pgup or pgdn
-        
-        if ((GetAsyncKeyState(VK_PRIOR) & 0x8000) != 0) { // Page Up
-            if (moving_mode_ != MOVING_TYPE::NORMAL) {
-                moving_mode_ = MOVING_TYPE::NORMAL;
-                std::cout << "[Info] Switched to NORMAL mode.\n";
+        // Toggle mode with one key and debounce handling.
+        static bool toggle_mode_debounce = false;
+        if ((GetAsyncKeyState(toggle_mode_key_) & 0x8000) != 0) {
+            if (!toggle_mode_debounce) {
+                if (moving_mode_ == MOVING_TYPE::FAST) {
+                    moving_mode_ = MOVING_TYPE::NORMAL;
+                    std::cout << "[Info] Switched to NORMAL mode.\n";
+                } else {
+                    moving_mode_ = MOVING_TYPE::FAST;
+                    std::cout << "[Info] Switched to FAST mode.\n";
+                }
+                toggle_mode_debounce = true; // prevent immediate re-toggle
             }
-        }
-        else if ((GetAsyncKeyState(VK_NEXT) & 0x8000) != 0) { // Page Down
-            if (moving_mode_ != MOVING_TYPE::FAST) {
-                moving_mode_ = MOVING_TYPE::FAST;
-                std::cout << "[Info] Switched to FAST mode.\n";
-            }
+        } else {
+            toggle_mode_debounce = false; // reset debounce when key is released
         }
 
         // Build and send the current Left Stick report based on T/F/H/G.
@@ -70,7 +74,7 @@ void LeftStickControl::Run() {
             break;
         }
 
-        // Wait ~20ms (about 50 updates per second).
+        // Wait ~2ms
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 
@@ -91,15 +95,6 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     SHORT x = before_stick_pos_x_;    // Left Stick X axis value
     SHORT y = before_stick_pos_y_;    // Left Stick Y axis value
 
-    // bool press_up = (GetAsyncKeyState('T') & 0x8000) != 0;
-    // bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
-    // bool press_down = (GetAsyncKeyState('G') & 0x8000) != 0;
-    // bool press_right = (GetAsyncKeyState('H') & 0x8000) != 0;
-    // bool press_up = (GetAsyncKeyState('W') & 0x8000) != 0;
-    // bool press_left = (GetAsyncKeyState('A') & 0x8000) != 0;
-    // bool press_down = (GetAsyncKeyState('S') & 0x8000) != 0;
-    // bool press_right = (GetAsyncKeyState('D') & 0x8000) != 0;
-    // bool press_space = (GetAsyncKeyState(VK_SPACE)& 0x8000) != 0;
     bool press_up = (GetAsyncKeyState(up_key_) & 0x8000) != 0;
     bool press_down = (GetAsyncKeyState(down_key_) & 0x8000) != 0;
     bool press_left = (GetAsyncKeyState(left_key_) & 0x8000) != 0;
@@ -206,16 +201,7 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     std::string output_x = (x == NEG_FULL) ? "<-" : (x == FULL) ? "->" : "o";
     std::string output_y = (y == NEG_FULL) ? "v" : (y == FULL) ? "^" : "o";
     std::string jump_state = (press_space) ? "o" : "x";
-    if (report_count % 10 == 0) { // Print every 10 reports
-        if (press_up == true
-            || press_down == true
-            || press_left == true
-            || press_right == true
-            || press_space == true) {
-            std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\t\tJump : " << jump_state << "\n";
-            // std::cout << "[Info] Stick : " << x << "\t" << y << ",\t\tJump : " << jump_state << std::endl;
-        }
-    }
+    
     
     // Keep triggers and right stick at zero (unused).
     report.bLeftTrigger  = 0;
@@ -233,6 +219,17 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     before_stick_pos_y_ = y;
 
     report_count++;
+
+
+    if (report_count % 10 == 0) { // Print every 10 reports
+        auto period = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - loop_start_time_);
+        
+        if (press_up == true || press_down == true || press_left == true || press_right == true || press_space == true) {
+            std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\tJump : " << jump_state << "\t"
+                      << "Duration : " << period.count() << "\tus\n";
+        }
+    }
     return report;
 }
 
@@ -320,8 +317,6 @@ void LeftStickControl::ProcessINI() {
     std::string toggle_mode_key_string;
     std::string temp_toggle_mode_key_string;
 
-    std::cout << "aaaaaaaaaaaaaaaaaaaaaaaaaa\n";
-
     ini_parser_.ParseConfig("Pad to Key", "up", up_key_string);
     ini_parser_.ParseConfig("Pad to Key", "down", down_key_string);
     ini_parser_.ParseConfig("Pad to Key", "left", left_key_string);
@@ -331,11 +326,7 @@ void LeftStickControl::ProcessINI() {
     ini_parser_.ParseConfig("Mode", "fast", toggle_mode_key_string);
     ini_parser_.ParseConfig("Mode", "normal", temp_toggle_mode_key_string);
 
-    std::cout << up_key_string << " " << down_key_string << " "
-              << left_key_string << " " << right_key_string << " "
-              << jump_key_string << " " << toggle_mode_key_string << " "
-              << temp_toggle_mode_key_string << "\n";
-
+    
     // convert string input to key map
     try {
         up_key_ = KeyTable::map.at(KeyTable::toUpper(up_key_string));
@@ -351,6 +342,11 @@ void LeftStickControl::ProcessINI() {
         // errror handling: set default keys
     }
     
-    
+    std::cout << "Key Setting Detected Successfully Detected!\n"
+              << "up key : " << up_key_string << "\n"
+              << "left key : " << left_key_string << "\n"
+              << "down key : " << down_key_string << "\n"
+              << "right key : " << right_key_string << "\n\n"
+              << "mode toggle : " << toggle_mode_key_string << "\n\n\n\n";
 
 }

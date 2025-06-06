@@ -40,9 +40,11 @@ private:
     // calculate command report from key states
     XUSB_REPORT BuildReportFromKeys(const int moving_mode);
     
+    // Controller
     VigemController& controller_;  
     bool should_exit_;
 
+    // Key Settings configuration
     IniParser ini_parser_;
     int up_key_;
     int down_key_;
@@ -51,6 +53,9 @@ private:
     int jump_key_;
     int toggle_mode_key_;
     int temp_toggle_mode_key_;
+
+    // loop period detection
+    std::chrono::steady_clock::time_point loop_start_time_ = std::chrono::steady_clock::now();
 
     // Default mode is FAST
     int moving_mode_ = MOVING_TYPE::FAST; 
