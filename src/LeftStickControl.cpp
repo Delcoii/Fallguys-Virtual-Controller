@@ -1,17 +1,29 @@
 #include "LeftStickControl.hpp"
-#include <iostream>
-#include <thread>
-#include <chrono>
+
 
 // Constructor: store the reference and initialize should_exit_ to false.
 LeftStickControl::LeftStickControl(VigemController& controller)
     : controller_(controller)
-    , should_exit_(false)
-{
+    , should_exit_(false) {
+
+    // Ini init: get exe folder path.
+    char exePath[MAX_PATH] = {0};
+    GetModuleFileNameA(NULL, exePath, MAX_PATH);
+    std::string path(exePath);
+    // Extract the directory from the full exe path.
+    size_t pos = path.find_last_of("\\/");
+    if (pos != std::string::npos) {
+        path = path.substr(0, pos);
+    }
+
+    // Build ini file path relative to exe directory.
+    std::string iniFile = path + "\\key_settings.ini";
+    ini_parser_.Init(iniFile.c_str());
+
+    ProcessINI();
 }
 
-// Run the T/F/H/G control loop.
-// Exits when F12 is pressed or should_exit_ becomes true.
+
 void LeftStickControl::Run() {
     // Verify that the VigemController is initialized and a controller is registered.
     if (!controller_.IsClientValid() || !controller_.IsControllerValid()) {
@@ -83,11 +95,16 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     // bool press_left = (GetAsyncKeyState('F') & 0x8000) != 0;
     // bool press_down = (GetAsyncKeyState('G') & 0x8000) != 0;
     // bool press_right = (GetAsyncKeyState('H') & 0x8000) != 0;
-    bool press_up = (GetAsyncKeyState('W') & 0x8000) != 0;
-    bool press_left = (GetAsyncKeyState('A') & 0x8000) != 0;
-    bool press_down = (GetAsyncKeyState('S') & 0x8000) != 0;
-    bool press_right = (GetAsyncKeyState('D') & 0x8000) != 0;
-    bool press_space = (GetAsyncKeyState(VK_SPACE)& 0x8000) != 0;
+    // bool press_up = (GetAsyncKeyState('W') & 0x8000) != 0;
+    // bool press_left = (GetAsyncKeyState('A') & 0x8000) != 0;
+    // bool press_down = (GetAsyncKeyState('S') & 0x8000) != 0;
+    // bool press_right = (GetAsyncKeyState('D') & 0x8000) != 0;
+    // bool press_space = (GetAsyncKeyState(VK_SPACE)& 0x8000) != 0;
+    bool press_up = (GetAsyncKeyState(up_key_) & 0x8000) != 0;
+    bool press_down = (GetAsyncKeyState(down_key_) & 0x8000) != 0;
+    bool press_left = (GetAsyncKeyState(left_key_) & 0x8000) != 0;
+    bool press_right = (GetAsyncKeyState(right_key_) & 0x8000) != 0;
+    bool press_space = (GetAsyncKeyState(jump_key_) & 0x8000) != 0;
 
     static int report_count = 0;
 
@@ -291,4 +308,49 @@ void LeftStickControl::AutoMoveJelly() {
     XUSB_REPORT neutral = {};
     controller_.SendX360Report(neutral);
     std::cout << "[Info] LeftStickControl loop exited.\n";
+}
+
+
+void LeftStickControl::ProcessINI() {
+    std::string up_key_string;
+    std::string down_key_string;
+    std::string left_key_string;
+    std::string right_key_string;
+    std::string jump_key_string;
+    std::string toggle_mode_key_string;
+    std::string temp_toggle_mode_key_string;
+
+    std::cout << "aaaaaaaaaaaaaaaaaaaaaaaaaa\n";
+
+    ini_parser_.ParseConfig("Pad to Key", "up", up_key_string);
+    ini_parser_.ParseConfig("Pad to Key", "down", down_key_string);
+    ini_parser_.ParseConfig("Pad to Key", "left", left_key_string);
+    ini_parser_.ParseConfig("Pad to Key", "right", right_key_string);
+    ini_parser_.ParseConfig("Pad to Key", "jump", jump_key_string);
+
+    ini_parser_.ParseConfig("Mode", "fast", toggle_mode_key_string);
+    ini_parser_.ParseConfig("Mode", "normal", temp_toggle_mode_key_string);
+
+    std::cout << up_key_string << " " << down_key_string << " "
+              << left_key_string << " " << right_key_string << " "
+              << jump_key_string << " " << toggle_mode_key_string << " "
+              << temp_toggle_mode_key_string << "\n";
+
+    // convert string input to key map
+    try {
+        up_key_ = KeyTable::map.at(KeyTable::toUpper(up_key_string));
+        down_key_ = KeyTable::map.at(KeyTable::toUpper(down_key_string));
+        left_key_ = KeyTable::map.at(KeyTable::toUpper(left_key_string));
+        right_key_ = KeyTable::map.at(KeyTable::toUpper(right_key_string));
+        jump_key_ = KeyTable::map.at(KeyTable::toUpper(jump_key_string));
+        toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(toggle_mode_key_string));
+        temp_toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(temp_toggle_mode_key_string));
+
+    } catch (const std::out_of_range &e) {
+        std::cerr << "!!! Key not found in KeyTable !!! : " << e.what() << std::endl;
+        // errror handling: set default keys
+    }
+    
+    
+
 }

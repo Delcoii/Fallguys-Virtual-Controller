@@ -1,8 +1,17 @@
 #pragma once
 
 #include <Windows.h>
+#include <iostream>
+#include <thread>
+#include <chrono>
+#include <cctype>
+
 #include <ViGEm/ViGEmClient.h>
 #include "VigemController.hpp"
+
+#include "KeyTable.hpp"        // Key mapping table
+#include "ini_parser.h"
+
 
 namespace MOVING_TYPE {
     enum Type {
@@ -25,13 +34,28 @@ public:
     void LoopExit() { should_exit_ = true; }
 
 private:
-    VigemController& controller_;  
-    bool should_exit_;
+    // Get input key from ini file
+    void ProcessINI();
 
     // calculate command report from key states
     XUSB_REPORT BuildReportFromKeys(const int moving_mode);
     
+    VigemController& controller_;  
+    bool should_exit_;
 
+    IniParser ini_parser_;
+    int up_key_;
+    int down_key_;
+    int left_key_;
+    int right_key_;
+    int jump_key_;
+    int toggle_mode_key_;
+    int temp_toggle_mode_key_;
+
+    // Default mode is FAST
+    int moving_mode_ = MOVING_TYPE::FAST; 
+
+    // variables for calculating Left Stick command
     bool before_press_state_up_ = false;
     bool before_press_state_down_ = false;
     bool before_press_state_left_ = false;
@@ -41,8 +65,6 @@ private:
     int down_count_ = 0;
     int left_count_ = 0;
     int right_count_ = 0;
-
-    int moving_mode_ = MOVING_TYPE::FAST; // Default mode is FAST
 
     int before_stick_pos_x_ = 0;
     int before_stick_pos_y_ = 0;

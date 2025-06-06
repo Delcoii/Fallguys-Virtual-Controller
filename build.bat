@@ -1,6 +1,6 @@
 @echo off
 cl /MD /O2 /EHsc /I "vigem_client\include" ^
-    /I "src" ^
+    /I "include" ^
     /I "ini_parser\include" ^
     "src\VigemController.cpp" ^
     "src\LeftStickControl.cpp" ^
