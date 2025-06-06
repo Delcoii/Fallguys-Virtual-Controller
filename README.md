@@ -34,6 +34,9 @@ test_exe.bat
 # 개발 참고
 ## Visual Studio 설치 시..
 * https://visualstudio.microsoft.com/ko/downloads/
-* 아래 Visual Studio 2022용 빌드 도구 를 설치 (https://aka.ms/vs/17/release/vs_BuildTools.exe)
 * C++를 이용한 데스크톱 개발 선택하고 다운로드
 * v141 도 포함해서 설치, ViGEm SDK 내부의 sln 열고 빌드 (배포용은 release로 빌드)
+
+## VSCode 세팅
+* https://aka.ms/vs/17/release/vs_BuildTools.exe
+* VSCode 터미널 자동 실행은 settings.json 참고
