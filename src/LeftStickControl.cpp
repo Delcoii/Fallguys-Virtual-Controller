@@ -32,25 +32,27 @@ void LeftStickControl::Run() {
     }
 
     std::cout << "[Info] Fallguys Jelly Control started. Press F12 to exit.\n";
-    std::cout << "[Info] Current Default Mode : FAST, Press PageUp or PageDown to change mode!!\n";
+    std::cout << "[Info] Current Default Mode : FAST, Press toggle key to change mode!!\n";
 
-    // Loop until F12 is pressed or should_exit_ is true.
+    // desired period per loop.
+    auto desired_period = std::chrono::microseconds(10);
+    auto next_frame_time = std::chrono::high_resolution_clock::now();
+
     while (true) {
-        loop_start_time_ = std::chrono::high_resolution_clock::now();
+        loop_start_time_ = std::chrono::high_resolution_clock::now(); // reset loop start time
+        next_frame_time += desired_period; // schedule next loop time
 
         // If F12 is pressed, break out.
         if ((GetAsyncKeyState(VK_F12) & 0x8000) != 0) {
             std::cout << "[Info] F12 detected. Exiting Program.\n";
             break;
         }
-
-        // If an external request to exit was made, break out.
         if (should_exit_) {
             std::cout << "[Info] LoopExit() called. Exiting Program.\n";
             break;
         }
 
-        // Toggle mode with one key and debounce handling.
+        // Toggle mode with debounce handling.
         static bool toggle_mode_debounce = false;
         if ((GetAsyncKeyState(toggle_mode_key_) & 0x8000) != 0) {
             if (!toggle_mode_debounce) {
@@ -61,21 +63,23 @@ void LeftStickControl::Run() {
                     moving_mode_ = MOVING_TYPE::FAST;
                     std::cout << "[Info] Switched to FAST mode.\n";
                 }
-                toggle_mode_debounce = true; // prevent immediate re-toggle
+                toggle_mode_debounce = true;
             }
         } else {
-            toggle_mode_debounce = false; // reset debounce when key is released
+            toggle_mode_debounce = false;
         }
 
-        // Build and send the current Left Stick report based on T/F/H/G.
+        // Build and send the current Left Stick report.
         XUSB_REPORT report = BuildReportFromKeys(moving_mode_);
         if (!controller_.SendX360Report(report)) {
             std::cerr << "[Error] Failed to send X360 report.\n";
             break;
         }
 
-        // Wait ~2ms
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        // Sleep until next frame time.
+        std::this_thread::sleep_until(next_frame_time);
+        last_period_us_ = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - loop_start_time_);
     }
 
     // On exit, reset Left Stick to (0,0) to center it.
@@ -221,13 +225,12 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     report_count++;
 
 
-    if (report_count % 10 == 0) { // Print every 10 reports
-        auto period = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::high_resolution_clock::now() - loop_start_time_);
-        
+    if (report_count % 15000 == 0) {         
         if (press_up == true || press_down == true || press_left == true || press_right == true || press_space == true) {
-            std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\tJump : " << jump_state << "\t"
-                      << "Duration : " << period.count() << "\tus\n";
+            // std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\tJump : " << jump_state << "\t"
+            //           << "Duration : " << period.count() << "\tus\n";
+            std::cout << "[Info] move   : " << output_x << "\t" << output_y << "\t" << jump_state <<
+                        "\tDuration : " << last_period_us_.count() << "us\n";
         }
     }
     return report;
@@ -323,8 +326,7 @@ void LeftStickControl::ProcessINI() {
     ini_parser_.ParseConfig("Pad to Key", "right", right_key_string);
     ini_parser_.ParseConfig("Pad to Key", "jump", jump_key_string);
 
-    ini_parser_.ParseConfig("Mode", "fast", toggle_mode_key_string);
-    ini_parser_.ParseConfig("Mode", "normal", temp_toggle_mode_key_string);
+    ini_parser_.ParseConfig("Mode", "toggle", toggle_mode_key_string);
 
     
     // convert string input to key map
@@ -335,18 +337,17 @@ void LeftStickControl::ProcessINI() {
         right_key_ = KeyTable::map.at(KeyTable::toUpper(right_key_string));
         jump_key_ = KeyTable::map.at(KeyTable::toUpper(jump_key_string));
         toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(toggle_mode_key_string));
-        temp_toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(temp_toggle_mode_key_string));
 
     } catch (const std::out_of_range &e) {
         std::cerr << "!!! Key not found in KeyTable !!! : " << e.what() << std::endl;
         // errror handling: set default keys
     }
     
-    std::cout << "Key Setting Detected Successfully Detected!\n"
-              << "up key : " << up_key_string << "\n"
-              << "left key : " << left_key_string << "\n"
-              << "down key : " << down_key_string << "\n"
-              << "right key : " << right_key_string << "\n\n"
+    std::cout << "\n\nKey Setting Detected Successfully Detected!\n\n"
+              << "up key      : " << up_key_string << "\n"
+              << "left key    : " << left_key_string << "\n"
+              << "down key    : " << down_key_string << "\n"
+              << "right key   : " << right_key_string << "\n\n"
               << "mode toggle : " << toggle_mode_key_string << "\n\n\n\n";
 
 }

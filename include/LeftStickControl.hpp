@@ -52,10 +52,10 @@ private:
     int right_key_;
     int jump_key_;
     int toggle_mode_key_;
-    int temp_toggle_mode_key_;
 
     // loop period detection
     std::chrono::steady_clock::time_point loop_start_time_ = std::chrono::steady_clock::now();
+    std::chrono::microseconds last_period_us_;
 
     // Default mode is FAST
     int moving_mode_ = MOVING_TYPE::FAST; 
