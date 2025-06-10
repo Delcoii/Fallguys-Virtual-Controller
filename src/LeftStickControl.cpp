@@ -4,7 +4,8 @@
 // Constructor: store the reference and initialize should_exit_ to false.
 LeftStickControl::LeftStickControl(VigemController& controller)
     : controller_(controller)
-    , should_exit_(false) {
+    , should_exit_(false),
+    log_thread_(&LeftStickControl::LogWorker, this) {
 
     // Ini init: get exe folder path.
     char exePath[MAX_PATH] = {0};
@@ -23,6 +24,14 @@ LeftStickControl::LeftStickControl(VigemController& controller)
     ProcessINI();
 }
 
+LeftStickControl::~LeftStickControl() {
+    log_thread_running_ = false;
+    log_cv_.notify_one();
+    if (log_thread_.joinable()) {
+        log_thread_.join();
+    }
+}
+
 
 void LeftStickControl::Run() {
     // Verify that the VigemController is initialized and a controller is registered.
@@ -31,24 +40,26 @@ void LeftStickControl::Run() {
         return;
     }
 
-    std::cout << "[Info] Fallguys Jelly Control started. Press F12 to exit.\n";
-    std::cout << "[Info] Current Default Mode : FAST, Press toggle key to change mode!!\n";
+    AddLog("[Info] Fallguys Jelly Control started. Press F12 to exit.");
+    AddLog("[Info] Current Default Mode : FAST, Press toggle key to change mode!!");
 
     // desired period per loop.
-    auto desired_period = std::chrono::microseconds(10);
+    auto desired_period = std::chrono::microseconds(100);
     auto next_frame_time = std::chrono::high_resolution_clock::now();
 
     while (true) {
+        total_loop_time_ = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - loop_start_time_); // calculate total loop time
         loop_start_time_ = std::chrono::high_resolution_clock::now(); // reset loop start time
         next_frame_time += desired_period; // schedule next loop time
 
         // If F12 is pressed, break out.
         if ((GetAsyncKeyState(VK_F12) & 0x8000) != 0) {
-            std::cout << "[Info] F12 detected. Exiting Program.\n";
+            AddLog("[Info] F12 detected. Exiting Program.");
             break;
         }
         if (should_exit_) {
-            std::cout << "[Info] LoopExit() called. Exiting Program.\n";
+            AddLog("[Info] LoopExit() called. Exiting Program.");
             break;
         }
 
@@ -58,10 +69,10 @@ void LeftStickControl::Run() {
             if (!toggle_mode_debounce) {
                 if (moving_mode_ == MOVING_TYPE::FAST) {
                     moving_mode_ = MOVING_TYPE::NORMAL;
-                    std::cout << "[Info] Switched to NORMAL mode.\n";
+                    AddLog("[Info] Switched to NORMAL mode.");
                 } else {
                     moving_mode_ = MOVING_TYPE::FAST;
-                    std::cout << "[Info] Switched to FAST mode.\n";
+                    AddLog("[Info] Switched to FAST mode.");
                 }
                 toggle_mode_debounce = true;
             }
@@ -76,7 +87,7 @@ void LeftStickControl::Run() {
             if (!signal_onoff_debounce) {
                 // Toggle the on/off signal.
                 signal_on_ = !signal_on_;
-                std::cout << "[Info] Signal turned " << (signal_on_ ? "ON" : "OFF") << ".\n";
+                AddLog("[Info] Signal turned " + std::string(signal_on_ ? "ON" : "OFF") + ".");
                 signal_onoff_debounce = true;
             }
         } else {
@@ -87,10 +98,13 @@ void LeftStickControl::Run() {
         // Build and send the current Left Stick report.
         if (signal_on_ == true) {
             XUSB_REPORT report = BuildReportFromKeys(moving_mode_);
+            std::chrono::steady_clock::time_point before_signal_send = std::chrono::high_resolution_clock::now();
             if (!controller_.SendX360Report(report)) {
                 std::cerr << "[Error] Failed to send X360 report.\n";
                 break;
-            }    
+            }
+            signal_send_time_ = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::high_resolution_clock::now() - before_signal_send);    
         }
         else if (signal_on_ == false) {
             // If signal is off, send a neutral report.
@@ -110,7 +124,7 @@ void LeftStickControl::Run() {
     // On exit, reset Left Stick to (0,0) to center it.
     XUSB_REPORT neutral = {};
     controller_.SendX360Report(neutral);
-    std::cout << "[Info] LeftStickControl loop exited.\n";
+    AddLog("[Info] LeftStickControl loop exited.\n");
 }
 
 // Build an XUSB_REPORT from current key states.
@@ -250,13 +264,15 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     report_count++;
 
 
-    if (report_count % 15000 == 0) {         
+    if (report_count % 1500 == 0) {         
         if ((press_up == true || press_down == true || press_left == true || press_right == true || press_space == true)
             && signal_on_ == true) {
-            // std::cout << "[Info] Stick : " << output_x << "\t" << output_y << ",\tJump : " << jump_state << "\t"
-            //           << "Duration : " << period.count() << "\tus\n";
-            std::cout << "[Info] move   : " << output_x << "\t" << output_y << "\t" << jump_state <<
-                        "\tDuration : " << last_period_us_.count() << "us\n";
+            // std::cout << "[Info] move   : " << output_x << "\t" << output_y << "\t" << jump_state <<
+            //             "\tDuration : " << last_period_us_.count() << "us\t" <<
+            //             "\tSignal Send Time: " << signal_send_time_.count() << "us\n";
+            AddLog("[Info] move   : " + output_x + "\t" + output_y + "\t" + jump_state +
+                   "\tDuration : " + std::to_string(last_period_us_.count()) + "us");
+                // "\tSignal Send Time: " + std::to_string(signal_send_time_.count()) + "us");
         }
     }
     return report;
@@ -271,20 +287,20 @@ void LeftStickControl::AutoMoveJelly() {
         return;
     }
 
-    std::cout << "[Info] >> Auto <<  Jelly Control started. Press F12 to exit.\n";
+    AddLog("[Info] Auto Jelly Control started. Press F12 to exit.");
     
     int count = 0;
     // Loop until F12 is pressed or should_exit_ is true.
     while (true) {
         // If F12 is pressed, break out.
         if ((GetAsyncKeyState(VK_F12) & 0x8000) != 0) {
-            std::cout << "[Info] F12 detected. Exiting Program.\n";
+            AddLog("[Info] F12 detected. Exiting Program.\n");
             break;
         }
 
         // If an external request to exit was made, break out.
         if (should_exit_) {
-            std::cout << "[Info] LoopExit() called. Exiting Program.\n";
+            AddLog("[Info] LoopExit() called. Exiting Program.\n");
             break;
         }
 
@@ -333,7 +349,7 @@ void LeftStickControl::AutoMoveJelly() {
     // On exit, reset Left Stick to (0,0) to center it.
     XUSB_REPORT neutral = {};
     controller_.SendX360Report(neutral);
-    std::cout << "[Info] LeftStickControl loop exited.\n";
+    AddLog("[Info] LeftStickControl loop exited.\n");
 }
 
 
@@ -365,19 +381,50 @@ void LeftStickControl::ProcessINI() {
         left_key_ = KeyTable::map.at(KeyTable::toUpper(left_key_string));
         right_key_ = KeyTable::map.at(KeyTable::toUpper(right_key_string));
         jump_key_ = KeyTable::map.at(KeyTable::toUpper(jump_key_string));
+
         toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(toggle_mode_key_string));
         controller_onoff_key_ = KeyTable::map.at(KeyTable::toUpper(controller_onoff_key_string));
 
     } catch (const std::out_of_range &e) {
-        std::cerr << "!!! Key not found in KeyTable !!! : " << e.what() << std::endl;
+        std::cerr << "!!! Invalid Key input in key_settings.ini !!! : " << e.what() << std::endl;
+        std::cerr << "!!! Invalid Key input in key_settings.ini !!! : " << e.what() << std::endl;
+        std::cerr << "!!! Invalid Key input in key_settings.ini !!! : " << e.what() << std::endl;
         // errror handling: set default keys
     }
     
-    std::cout << "\n\nKey Setting Detected Successfully Detected!\n\n"
-              << "up key      : " << up_key_string << "\n"
-              << "left key    : " << left_key_string << "\n"
-              << "down key    : " << down_key_string << "\n"
-              << "right key   : " << right_key_string << "\n\n"
-              << "mode toggle : " << toggle_mode_key_string << "\n"
-              << "onoff       : " << controller_onoff_key_string << "\n\n\n\n";
+    AddLog("[Info] Key Setting Detected Successfully Detected!\n\n"
+              "[Info] up key      : " + up_key_string + "\n"
+              "[Info] left key    : " + left_key_string + "\n"
+              "[Info] down key    : " + down_key_string + "\n"
+              "[Info] right key   : " + right_key_string + "\n\n"
+              "[Info] mode toggle : " + toggle_mode_key_string + "\n"
+              "[Info] onoff       : " + controller_onoff_key_string + "\n\n\n\n");
+    
+}
+
+
+
+// logging thread
+void LeftStickControl::LogWorker() {
+    while (log_thread_running_) {
+        std::unique_lock<std::mutex> lock(log_mutex_);
+        log_cv_.wait(lock, [this]() { return !log_queue_.empty() || !log_thread_running_; });
+
+        while (!log_queue_.empty()) {
+            std::string log_message = log_queue_.front();
+            log_queue_.pop();
+            lock.unlock();
+
+            // log message!
+            std::cout << log_message << std::endl;
+
+            lock.lock();
+        }
+    }
+}
+
+void LeftStickControl::AddLog(const std::string& message) {
+    std::lock_guard<std::mutex> lock(log_mutex_);
+    log_queue_.push(message);
+    log_cv_.notify_one();
 }

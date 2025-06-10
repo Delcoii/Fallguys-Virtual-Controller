@@ -6,9 +6,16 @@
 #include <chrono>
 #include <cctype>
 
+// logging by different thread
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+
+// xbox controller emulation
 #include <ViGEm/ViGEmClient.h>
 #include "VigemController.hpp"
 
+// utils
 #include "KeyTable.hpp"        // Key mapping table
 #include "ini_parser.h"
 
@@ -27,6 +34,7 @@ class LeftStickControl {
 public:
  
     explicit LeftStickControl(VigemController& controller);
+    ~LeftStickControl();
     
     void Run();
     void AutoMoveJelly();
@@ -52,12 +60,16 @@ private:
     int left_key_;
     int right_key_;
     int jump_key_;
+    int dive_key_;
+
     int toggle_mode_key_;
     int controller_onoff_key_;
 
     // loop period detection
     std::chrono::steady_clock::time_point loop_start_time_ = std::chrono::steady_clock::now();
+    std::chrono::microseconds total_loop_time_;  // desired by 100 us
     std::chrono::microseconds last_period_us_;
+    std::chrono::microseconds signal_send_time_;
 
     // Default mode is FAST
     int moving_mode_ = MOVING_TYPE::FAST; 
@@ -75,4 +87,14 @@ private:
 
     int before_stick_pos_x_ = 0;
     int before_stick_pos_y_ = 0;
+
+
+    // Logging
+    std::queue<std::string> log_queue_;
+    std::mutex log_mutex_;
+    std::condition_variable log_cv_;
+    std::thread log_thread_;
+    bool log_thread_running_ = true;
+    void LogWorker(); // Log processing thread function
+    void AddLog(const std::string& message);
 };
