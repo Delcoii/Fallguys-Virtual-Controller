@@ -142,7 +142,8 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     bool press_down = (GetAsyncKeyState(down_key_) & 0x8000) != 0;
     bool press_left = (GetAsyncKeyState(left_key_) & 0x8000) != 0;
     bool press_right = (GetAsyncKeyState(right_key_) & 0x8000) != 0;
-    bool press_space = (GetAsyncKeyState(jump_key_) & 0x8000) != 0;
+    bool press_jump = (GetAsyncKeyState(jump_key_) & 0x8000) != 0;
+    bool press_dive = (GetAsyncKeyState(dive_key_) & 0x8000) != 0;
 
     static int report_count = 0;
 
@@ -237,13 +238,17 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     // Assign the stick values.
     report.sThumbLX = x;
     report.sThumbLY = y;
-    if (press_space) {
+    if (press_jump == true) {
         report.wButtons |= XUSB_GAMEPAD_A; 
+    }
+    if (press_dive == true) {
+        report.wButtons |= XUSB_GAMEPAD_X; 
     }
 
     std::string output_x = (x == NEG_FULL) ? "<-" : (x == FULL) ? "->" : "o";
     std::string output_y = (y == NEG_FULL) ? "v" : (y == FULL) ? "^" : "o";
-    std::string jump_state = (press_space) ? "o" : "x";
+    std::string jump_state = (press_jump) ? "o" : "x";
+    std::string dive_state = (press_dive) ? "o" : "x";
     
     
     // Keep triggers and right stick at zero (unused).
@@ -265,12 +270,13 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
 
 
     if (report_count % 1500 == 0) {         
-        if ((press_up == true || press_down == true || press_left == true || press_right == true || press_space == true)
+        if ((press_up == true || press_down == true || press_left == true || press_right == true
+            || press_jump == true || press_dive == true)   
             && signal_on_ == true) {
             // std::cout << "[Info] move   : " << output_x << "\t" << output_y << "\t" << jump_state <<
             //             "\tDuration : " << last_period_us_.count() << "us\t" <<
             //             "\tSignal Send Time: " << signal_send_time_.count() << "us\n";
-            AddLog("[Info] move   : " + output_x + "\t" + output_y + "\t" + jump_state +
+            AddLog("[Info] move   : " + output_x + "\t" + output_y + "\t" + jump_state + " " + dive_state +
                    "\tDuration : " + std::to_string(last_period_us_.count()) + "us");
                 // "\tSignal Send Time: " + std::to_string(signal_send_time_.count()) + "us");
         }
@@ -359,8 +365,11 @@ void LeftStickControl::ProcessINI() {
     std::string left_key_string;
     std::string right_key_string;
     std::string jump_key_string;
+    std::string dive_key_string;
+
     std::string toggle_mode_key_string;
     std::string temp_toggle_mode_key_string;
+
     std::string controller_onoff_key_string;
 
     ini_parser_.ParseConfig("Pad to Key", "up", up_key_string);
@@ -368,6 +377,7 @@ void LeftStickControl::ProcessINI() {
     ini_parser_.ParseConfig("Pad to Key", "left", left_key_string);
     ini_parser_.ParseConfig("Pad to Key", "right", right_key_string);
     ini_parser_.ParseConfig("Pad to Key", "jump", jump_key_string);
+    ini_parser_.ParseConfig("Pad to Key", "dive", dive_key_string);
 
     ini_parser_.ParseConfig("Mode", "toggle", toggle_mode_key_string);
 
@@ -381,6 +391,7 @@ void LeftStickControl::ProcessINI() {
         left_key_ = KeyTable::map.at(KeyTable::toUpper(left_key_string));
         right_key_ = KeyTable::map.at(KeyTable::toUpper(right_key_string));
         jump_key_ = KeyTable::map.at(KeyTable::toUpper(jump_key_string));
+        dive_key_ = KeyTable::map.at(KeyTable::toUpper(dive_key_string));
 
         toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(toggle_mode_key_string));
         controller_onoff_key_ = KeyTable::map.at(KeyTable::toUpper(controller_onoff_key_string));
@@ -397,6 +408,8 @@ void LeftStickControl::ProcessINI() {
               "[Info] left key    : " + left_key_string + "\n"
               "[Info] down key    : " + down_key_string + "\n"
               "[Info] right key   : " + right_key_string + "\n\n"
+              "[Info] jump key    : " + jump_key_string + "\n"
+              "[Info] dive key    : " + dive_key_string + "\n\n"
               "[Info] mode toggle : " + toggle_mode_key_string + "\n"
               "[Info] onoff       : " + controller_onoff_key_string + "\n\n\n\n");
     
