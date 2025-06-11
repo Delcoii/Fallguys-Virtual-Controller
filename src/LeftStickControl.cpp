@@ -44,7 +44,7 @@ void LeftStickControl::Run() {
     AddLog("[Info] Current Default Mode : FAST, Press toggle key to change mode!!");
 
     // desired period per loop.
-    auto desired_period = std::chrono::microseconds(100);
+    auto desired_period = std::chrono::microseconds(10);
     auto next_frame_time = std::chrono::high_resolution_clock::now();
 
     while (true) {
@@ -269,7 +269,7 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
     report_count++;
 
 
-    if (report_count % 1500 == 0) {         
+    if (report_count % 15000 == 0) {         
         if ((press_up == true || press_down == true || press_left == true || press_right == true
             || press_jump == true || press_dive == true)   
             && signal_on_ == true) {
