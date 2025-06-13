@@ -86,9 +86,26 @@ void LeftStickControl::Run() {
         if ((GetAsyncKeyState(controller_onoff_key_) & 0x8000) != 0) {
             if (!signal_onoff_debounce) {
                 // Toggle the on/off signal.
-                signal_on_ = !signal_on_;
-                AddLog("[Info] Signal turned " + std::string(signal_on_ ? "ON" : "OFF") + ".");
+                
+                if (signal_on_ == true) {
+                    // send neutral report and unregister the controller
+                    XUSB_REPORT neutral = {};
+                    if (!controller_.SendX360Report(neutral)) {
+                        std::cerr << "[Error] Failed to send neutral X360 report.\n";
+                        break;
+                    }
+                    // std::this_thread::sleep_for(std::chrono::milliseconds(100)); // wait for a moment
+                    controller_.Unregister();
+                }
+                else if (signal_on_ == false) {
+                    if (!controller_.RegisterX360()) {
+                        std::cerr << "[Error] Failed to register controller.\n";
+                        break;
+                    }
+                }
+
                 signal_onoff_debounce = true;
+                signal_on_ = !signal_on_;
             }
         } else {
             signal_onoff_debounce = false;
@@ -106,17 +123,10 @@ void LeftStickControl::Run() {
             signal_send_time_ = std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::high_resolution_clock::now() - before_signal_send);    
         }
-        else if (signal_on_ == false) {
-            // If signal is off, send a neutral report.
-            XUSB_REPORT neutral = {};
-            if (!controller_.SendX360Report(neutral)) {
-                std::cerr << "[Error] Failed to send neutral X360 report.\n";
-                break;
-            }
-        }
         
         // Sleep until next frame time.
-        std::this_thread::sleep_until(next_frame_time);
+        // std::this_thread::sleep_until(next_frame_time);
+        // std::this_thread::sleep_for(desired_period);
         last_period_us_ = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - loop_start_time_);
     }
@@ -273,7 +283,7 @@ XUSB_REPORT LeftStickControl::BuildReportFromKeys(const int moving_mode) {
         if ((press_up == true || press_down == true || press_left == true || press_right == true
             || press_jump == true || press_dive == true)   
             && signal_on_ == true) {
-            // std::cout << "[Info] move   : " << output_x << "\t" << output_y << "\t" << jump_state <<
+            // std::cout << "[Info] move   : " << x << "\t" << y << "\t" << jump_state <<
             //             "\tDuration : " << last_period_us_.count() << "us\t" <<
             //             "\tSignal Send Time: " << signal_send_time_.count() << "us\n";
             AddLog("[Info] move   : " + output_x + "\t" + output_y + "\t" + jump_state + " " + dive_state +

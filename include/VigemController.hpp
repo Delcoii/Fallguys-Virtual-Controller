@@ -24,6 +24,10 @@ public:
     bool IsClientValid() const    { return client_ != nullptr; }
     bool IsControllerValid() const{ return target_ != nullptr; }
 
+    bool IsRegistered() const {
+        return (client_ != nullptr) && (target_ != nullptr);
+    }
+
     static const int WAIT_SECONDS = 20;  // not used now
 
     // Disables copy construction and copy assignment
