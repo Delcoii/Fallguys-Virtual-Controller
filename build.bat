@@ -8,5 +8,7 @@ cl /MD /O2 /EHsc /I "vigem_client\include" ^
     "src\main.cpp" ^
     /link ^
     /LIBPATH:"vigem_client\lib\release" ^
+    /MANIFEST ^
+    /MANIFESTFILE:"admin.manifest" ^
     /OUT:"build\main.exe" ViGEmClient.lib user32.lib
 exit /B 0
