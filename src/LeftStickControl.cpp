@@ -114,6 +114,8 @@ void LeftStickControl::Run() {
 
         // Build and send the current Left Stick report.
         if (signal_on_ == true) {
+            // AAAAAAAAAAAAA
+            // AAAAAAAAAAAAA
             XUSB_REPORT report = BuildReportFromKeys(moving_mode_);
             std::chrono::steady_clock::time_point before_signal_send = std::chrono::high_resolution_clock::now();
             if (!controller_.SendX360Report(report)) {

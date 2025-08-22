@@ -18,13 +18,14 @@
 ## Build
 ### Virtual Pad
 ```bash
-build.bat 
+build_static.bat 
 ```
 
 ### connection test script
 ```bash
 test_exe.bat
 ```
+* find .exe in build/ folder
 
 ### automove (in develop)
 ```bash
