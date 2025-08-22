@@ -19,6 +19,10 @@
 #include "KeyTable.hpp"        // Key mapping table
 #include "ini_parser.h"
 
+// reset & exit control command
+#include "MenuButtonControl.hpp"
+#include "MouseBlocking.hpp"
+
 
 namespace MOVING_TYPE {
     enum Type {
@@ -48,7 +52,9 @@ private:
     // calculate command report from key states
     XUSB_REPORT BuildReportFromKeys(const int moving_mode);
     
+
     // Controller
+    MouseBlocker mouse_blocker_;
     VigemController& controller_;  
     bool should_exit_;
     bool signal_on_ = true;  // signal on/off state
@@ -64,6 +70,7 @@ private:
 
     int toggle_mode_key_;
     int controller_onoff_key_;
+    int checkpoint_reset_key_;
 
     // loop period detection
     std::chrono::steady_clock::time_point loop_start_time_ = std::chrono::steady_clock::now();
@@ -88,6 +95,10 @@ private:
     int before_stick_pos_x_ = 0;
     int before_stick_pos_y_ = 0;
 
+
+    // reset & exit control command
+    MenuButtonControl menu_controller_;
+    bool is_in_checkpoint_reset_ = false;
 
     // Logging
     std::queue<std::string> log_queue_;

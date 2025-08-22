@@ -74,7 +74,13 @@
         "xutility": "cpp",
         "unordered_map": "cpp",
         "mutex": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "array": "cpp",
+        "condition_variable": "cpp",
+        "deque": "cpp",
+        "queue": "cpp",
+        "ranges": "cpp",
+        "span": "cpp"
     }
 }
 

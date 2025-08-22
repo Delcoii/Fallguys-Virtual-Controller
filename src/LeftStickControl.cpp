@@ -63,6 +63,32 @@ void LeftStickControl::Run() {
             break;
         }
 
+        // operate checkpoint reset command
+        static bool checkpoint_reset_debounce = false;
+        if ((GetAsyncKeyState(checkpoint_reset_key_) & 0x8000) != 0) {
+            if (!checkpoint_reset_debounce) {
+                AddLog("[Info] Checkpoint reset detected. Resetting checkpoint.");
+                is_in_checkpoint_reset_ = true;
+                checkpoint_reset_debounce = true;
+                mouse_blocker_.StartBlocking();
+            }
+        }
+        else{
+            checkpoint_reset_debounce = false;
+        }
+        // SetCheckPointResetReport changes is_in_checkpoint_reset_ to false
+        // when operation is done
+        if (is_in_checkpoint_reset_ == true) {
+            XUSB_REPORT report = menu_controller_.SetCheckPointResetReport(is_in_checkpoint_reset_);
+            if (!controller_.SendX360Report(report)) {
+                std::cerr << "[Error] Failed to send X360 report.\n";
+                break;
+            }
+
+            continue;
+        }
+        mouse_blocker_.StopBlocking();
+
         // Toggle mode with debounce handling.
         static bool toggle_mode_debounce = false;
         if ((GetAsyncKeyState(toggle_mode_key_) & 0x8000) != 0) {
@@ -114,8 +140,6 @@ void LeftStickControl::Run() {
 
         // Build and send the current Left Stick report.
         if (signal_on_ == true) {
-            // AAAAAAAAAAAAA
-            // AAAAAAAAAAAAA
             XUSB_REPORT report = BuildReportFromKeys(moving_mode_);
             std::chrono::steady_clock::time_point before_signal_send = std::chrono::high_resolution_clock::now();
             if (!controller_.SendX360Report(report)) {
@@ -380,9 +404,8 @@ void LeftStickControl::ProcessINI() {
     std::string dive_key_string;
 
     std::string toggle_mode_key_string;
-    std::string temp_toggle_mode_key_string;
-
     std::string controller_onoff_key_string;
+    std::string checkpoint_reset_key_string;
 
     ini_parser_.ParseConfig("Pad to Key", "up", up_key_string);
     ini_parser_.ParseConfig("Pad to Key", "down", down_key_string);
@@ -394,6 +417,9 @@ void LeftStickControl::ProcessINI() {
     ini_parser_.ParseConfig("Mode", "toggle", toggle_mode_key_string);
 
     ini_parser_.ParseConfig("System", "onoff", controller_onoff_key_string);
+    ini_parser_.ParseConfig("System", "checkpoint_reset", checkpoint_reset_key_string);
+
+    
 
     
     // convert string input to key map
@@ -407,6 +433,7 @@ void LeftStickControl::ProcessINI() {
 
         toggle_mode_key_ = KeyTable::map.at(KeyTable::toUpper(toggle_mode_key_string));
         controller_onoff_key_ = KeyTable::map.at(KeyTable::toUpper(controller_onoff_key_string));
+        checkpoint_reset_key_ = KeyTable::map.at(KeyTable::toUpper(checkpoint_reset_key_string));
 
     } catch (const std::out_of_range &e) {
         std::cerr << "!!! Invalid Key input in key_settings.ini !!! : " << e.what() << std::endl;
@@ -423,7 +450,8 @@ void LeftStickControl::ProcessINI() {
               "[Info] jump key    : " + jump_key_string + "\n"
               "[Info] dive key    : " + dive_key_string + "\n\n"
               "[Info] mode toggle : " + toggle_mode_key_string + "\n"
-              "[Info] onoff       : " + controller_onoff_key_string + "\n\n\n\n");
+              "[Info] onoff       : " + controller_onoff_key_string + "\n"
+              "[Info] checkpoint reset : " + checkpoint_reset_key_string + "\n\n\n\n");
     
 }
 

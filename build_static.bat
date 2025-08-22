@@ -13,6 +13,7 @@ cl /MT /O2 /EHsc /I "vigem_client\include" ^
     /I "ini_parser\include" ^
     "src\VigemController.cpp" ^
     "src\LeftStickControl.cpp" ^
+    "src\MenuButtonControl.cpp" ^
     "ini_parser\src\ini_parser.cpp" ^
     "src\main.cpp" ^
     /link ^
